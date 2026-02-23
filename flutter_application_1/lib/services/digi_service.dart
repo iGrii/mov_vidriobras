@@ -57,10 +57,7 @@ class DigiService {
         formData.files.add(
           MapEntry(
             'IMG_P',
-            await MultipartFile.fromFile(
-              imagenFile.path,
-              filename: filename,
-            ),
+            await MultipartFile.fromFile(imagenFile.path, filename: filename),
           ),
         );
       }
@@ -119,10 +116,7 @@ class DigiService {
         formData.files.add(
           MapEntry(
             'IMG_P',
-            await MultipartFile.fromFile(
-              imagenFile.path,
-              filename: filename,
-            ),
+            await MultipartFile.fromFile(imagenFile.path, filename: filename),
           ),
         );
       }
