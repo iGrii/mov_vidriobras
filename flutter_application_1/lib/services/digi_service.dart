@@ -1,8 +1,5 @@
 import 'package:dio/dio.dart';
-<<<<<<< HEAD
 import 'dart:io';
-=======
->>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
 import '../utils/dio_client.dart';
 import '../models/vidriobras_model.dart';
 
@@ -34,7 +31,6 @@ class DigiService {
       throw Exception('Error cargando productos: $msg');
     }
   }
-<<<<<<< HEAD
 
   Future<Producto> crearProducto({
     required String nombre,
@@ -57,12 +53,13 @@ class DigiService {
 
       // Si hay una imagen, agregarla al form data
       if (imagenFile != null) {
+        final filename = imagenFile.path.split(Platform.pathSeparator).last;
         formData.files.add(
           MapEntry(
             'IMG_P',
             await MultipartFile.fromFile(
               imagenFile.path,
-              filename: imagenFile.path.split('/').last,
+              filename: filename,
             ),
           ),
         );
@@ -78,6 +75,99 @@ class DigiService {
       throw Exception('Error creando producto: $msg');
     }
   }
-=======
->>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
+
+  Future<Producto> getProductoById(String id) async {
+    try {
+      final response = await _dio.get('/api/productos/$id');
+      final data = response.data;
+
+      if (data is Map) {
+        return Producto.fromJson(Map<String, dynamic>.from(data));
+      }
+
+      throw Exception('Respuesta inválida al obtener producto');
+    } on DioError catch (e) {
+      final msg = e.response != null
+          ? 'Status: ${e.response?.statusCode} - ${e.response?.data}'
+          : e.message;
+      throw Exception('Error obteniendo producto: $msg');
+    }
+  }
+
+  Future<Producto> actualizarProducto(
+    String id, {
+    required String nombre,
+    String? descripcion,
+    String? categoria,
+    double? precio,
+    String? grosor,
+    int? cantidad,
+    File? imagenFile,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'nombre': nombre,
+        'descripcion': descripcion ?? '',
+        'categoria': categoria ?? '',
+        'precio_unitario': precio ?? 0.0,
+        'grosor': grosor ?? '',
+        'cantidad': cantidad ?? 1,
+      });
+
+      if (imagenFile != null) {
+        final filename = imagenFile.path.split(Platform.pathSeparator).last;
+        formData.files.add(
+          MapEntry(
+            'IMG_P',
+            await MultipartFile.fromFile(
+              imagenFile.path,
+              filename: filename,
+            ),
+          ),
+        );
+      }
+
+      final response = await _dio.put('/api/productos/$id', data: formData);
+
+      return Producto.fromJson(Map<String, dynamic>.from(response.data));
+    } on DioError catch (e) {
+      final msg = e.response != null
+          ? 'Status: ${e.response?.statusCode} - ${e.response?.data}'
+          : e.message;
+      throw Exception('Error actualizando producto: $msg');
+    }
+  }
+
+  Future<void> eliminarProducto(String id) async {
+    try {
+      await _dio.delete('/api/productos/$id');
+    } on DioError catch (e) {
+      final msg = e.response != null
+          ? 'Status: ${e.response?.statusCode} - ${e.response?.data}'
+          : e.message;
+      throw Exception('Error eliminando producto: $msg');
+    }
+  }
+
+  Future<List<String>> getCategorias() async {
+    try {
+      final response = await _dio.get('/api/categorias');
+      final data = response.data;
+
+      if (data is List) {
+        return data.map((e) => e.toString()).toList();
+      }
+
+      if (data is Map && data['data'] is List) {
+        return (data['data'] as List).map((e) => e.toString()).toList();
+      }
+
+      throw Exception('Respuesta inválida al obtener categorías');
+    } on DioError catch (e) {
+      final msg = e.response != null
+          ? 'Status: ${e.response?.statusCode} - ${e.response?.data}'
+          : e.message;
+      throw Exception('Error obteniendo categorías: $msg');
+    }
+  }
 }

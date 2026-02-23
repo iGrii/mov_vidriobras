@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class SelectorService {
-  static const String _baseUrl = 'http://localhost:5000';
+  static const String _baseUrl = 'https://api.vidriobras.com';
 
   static const String operacionesId = '3f31e127-c7f1-49cf-8c95-efb846882165';
   static const String almacenId = '8426fd1a-2633-49d1-bc83-f6400bb58708';
@@ -106,6 +106,72 @@ class SelectorService {
       return LoginResponse(success: false, message: 'Error de conexión: $e');
     }
   }
+
+  /// Login genérico por área
+  Future<LoginResponse> login(
+    String areaId,
+    String nombre,
+    String codigoEmpresa,
+  ) async {
+    try {
+      final payload = {
+        'area_id': areaId,
+        'nombre': nombre,
+        'codigo_empresa': codigoEmpresa,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/selector/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return LoginResponse(
+          success: true,
+          data: data['data'],
+          message: data['message'],
+        );
+      } else {
+        return LoginResponse(
+          success: false,
+          message: data['message'] ?? 'Error en servidor',
+        );
+      }
+    } catch (e) {
+      return LoginResponse(success: false, message: 'Error de conexión: $e');
+    }
+  }
+
+  /// Obtener lista de áreas disponibles
+  Future<AreasResponse> getAreas() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/selector/areas'))
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return AreasResponse(
+          success: true,
+          data: data['data'],
+          message: data['message'],
+        );
+      } else {
+        return AreasResponse(
+          success: false,
+          message: data['message'] ?? 'Error al obtener áreas',
+        );
+      }
+    } catch (e) {
+      return AreasResponse(success: false, message: 'Error de conexión: $e');
+    }
+  }
 }
 
 /// Modelo de respuesta de login
@@ -115,4 +181,12 @@ class LoginResponse {
   final String message;
 
   LoginResponse({required this.success, this.data, required this.message});
+}
+
+class AreasResponse {
+  final bool success;
+  final dynamic data;
+  final String message;
+
+  AreasResponse({required this.success, this.data, required this.message});
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-<<<<<<< HEAD
 class PortadaScreen extends StatefulWidget {
   const PortadaScreen({super.key});
 
@@ -64,17 +63,10 @@ class _PortadaScreenState extends State<PortadaScreen>
   }
 
   @override
-=======
-class PortadaScreen extends StatelessWidget {
-  const PortadaScreen({super.key});
-
-  @override
->>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-<<<<<<< HEAD
         onTap: _irInicio,
         child: Stack(
           children: [
@@ -130,19 +122,6 @@ class PortadaScreen extends StatelessWidget {
               ),
             ),
           ],
-=======
-        onTap: () => context.go('/'),
-        child: Container(
-          color: Colors.white,
-          alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Image.asset(
-              'assets/images/portada.png',
-              fit: BoxFit.contain,
-            ),
-          ),
->>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
         ),
       ),
     );
