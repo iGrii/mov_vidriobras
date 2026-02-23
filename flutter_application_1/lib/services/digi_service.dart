@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
+<<<<<<< HEAD
 import 'dart:io';
+=======
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
 import '../utils/dio_client.dart';
 import '../models/vidriobras_model.dart';
 
@@ -31,6 +34,7 @@ class DigiService {
       throw Exception('Error cargando productos: $msg');
     }
   }
+<<<<<<< HEAD
 
   Future<Producto> crearProducto({
     required String nombre,
@@ -74,4 +78,6 @@ class DigiService {
       throw Exception('Error creando producto: $msg');
     }
   }
+=======
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
 }

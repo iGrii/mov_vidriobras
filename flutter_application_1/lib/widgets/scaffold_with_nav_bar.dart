@@ -24,7 +24,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Servicios'),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
+<<<<<<< HEAD
             label: 'Optimizar',
+=======
+            label: 'Optimización',
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping),

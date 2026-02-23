@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
+=======
+import 'package:go_router/go_router.dart';
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
 import 'package:flutter_application_1/models/vidriobras_model.dart';
 import 'package:flutter_application_1/services/digi_service.dart';
 import 'package:flutter_application_1/screens/agregar_producto_page.dart';
@@ -11,7 +15,10 @@ class ProductosPage extends StatefulWidget {
 }
 
 class _ProductosPageState extends State<ProductosPage> {
+<<<<<<< HEAD
   static const Color rojo = Color(0xFF9D2612);
+=======
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
   final DigiService _digiService = DigiService();
   late Future<List<Producto>> _futureProductos;
   int _currentIndex = 0;
@@ -207,7 +214,11 @@ Widget _buildBody() {
           );
 
         case 1: // Agregar
+<<<<<<< HEAD
           return AgregarProductoUI(onProductoAgregado: state._cargarProductos);
+=======
+          return const AgregarProductoUI();
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
 
         case 2: // Reportes
           return const Center(child: Text('Reportes (pendiente)'));
@@ -234,7 +245,11 @@ class _BottomAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final color = active ? _ProductosPageState.rojo : Colors.grey;
+=======
+    final color = active ? AgregarProductoUI.rojo : Colors.grey;
+>>>>>>> 6c8364a788af19309cf7c99d566e77818eb99a04
     return GestureDetector(
       onTap: onTap,
       child: Column(
