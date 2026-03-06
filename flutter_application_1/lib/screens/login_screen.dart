@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/selector_service.dart';
+import '../services/login_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final String origen;
@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final TextEditingController nombreController = TextEditingController();
   final TextEditingController empresaController = TextEditingController();
-  final SelectorService _selectorService = SelectorService();
+  final LoginService _loginService = LoginService();
   bool _isLoading = false;
 
   @override
@@ -138,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final resultado = await _selectorService.loginOperaciones(
+      final resultado = await _loginService.loginOperaciones(
         nombreController.text,
         empresaController.text,
       );

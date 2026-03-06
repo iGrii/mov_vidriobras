@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
-import 'package:flutter_application_1/services/digi_service.dart';
+
+import 'package:flutter_application_1/services/almacen_service.dart';
+import 'package:flutter_application_1/services/categoria_service.dart';
+import 'package:flutter_application_1/models/almacen_model.dart';
+import 'package:flutter_application_1/models/categoria_model.dart';
 
 class AgregarProductoUI extends StatefulWidget {
   final VoidCallback onProductoAgregado;
+  final Producto? producto;
 
-  const AgregarProductoUI({super.key, required this.onProductoAgregado});
+  const AgregarProductoUI({
+    super.key,
+    required this.onProductoAgregado,
+    this.producto,
+  });
 
   @override
   State<AgregarProductoUI> createState() => _AgregarProductoUIState();
@@ -21,10 +29,15 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
   late TextEditingController _descripcionController;
 
   String? _categoriaSeleccionada;
-  File? _imagenSeleccionada;
+  List<Categoria> _categorias = [];
+  bool _cargandoCategorias = false;
+  PlatformFile? _imagenSeleccionada;
   bool _cargando = false;
+  bool _editing = false;
+  String? _productId;
 
-  final DigiService _digiService = DigiService();
+  final AlmacenService _almacenService = AlmacenService();
+  final CategoriaService _categoriaService = CategoriaService();
 
   @override
   void initState() {
@@ -36,6 +49,51 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
     _grosorController = TextEditingController();
     _descripcionController = TextEditingController();
     _categoriaSeleccionada = 'Seleccionar';
+    // si hay producto, entrar en modo edición y rellenar campos
+    if (widget.producto != null) {
+      _editing = true;
+      final p = widget.producto!;
+      _productId = p.id;
+      _nombreController.text = p.nombre;
+      _codigoController.text = p.codigo ?? '';
+      _cantidadController.text = (p.cantidad ?? 1).toString();
+      _precioController.text = p.precio != null ? p.precio.toString() : '';
+      _grosorController.text = p.grosor ?? '';
+      _descripcionController.text = p.descripcion ?? '';
+      // Nota: _categoriaSeleccionada se establece después de cargar categorías
+      // imagen is shown from URL when editing; user can choose new one
+    }
+    _cargarCategorias();
+  }
+
+  Future<void> _cargarCategorias() async {
+    setState(() => _cargandoCategorias = true);
+    final cats = await _categoriaService.obtenerCategorias();
+    // ignore: avoid_print
+    print('categorias recibidas: $cats');
+    if (cats.isNotEmpty) {
+      setState(() {
+        _categorias = cats;
+        // Si estamos en modo edición, ahora establecer la categoría correcta
+        if (_editing && widget.producto != null) {
+          final categoriaId = widget.producto!.categoriaId;
+          if (categoriaId != null &&
+              cats.any((c) => c.id == categoriaId)) {
+            _categoriaSeleccionada = categoriaId;
+          } else {
+            _categoriaSeleccionada = 'Seleccionar';
+          }
+        }
+      });
+    } else {
+      // si falla la obtención, mostrar mensaje de error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudieron cargar categorías')),
+        );
+      }
+    }
+    setState(() => _cargandoCategorias = false);
   }
 
   @override
@@ -53,11 +111,12 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: true,
     );
 
     if (result != null && result.files.isNotEmpty) {
       setState(() {
-        _imagenSeleccionada = File(result.files.first.path!);
+        _imagenSeleccionada = result.files.first;
       });
     }
   }
@@ -89,23 +148,50 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
     setState(() => _cargando = true);
 
     try {
-      await _digiService.crearProducto(
+      final request = CrearProductoRequest(
         nombre: _nombreController.text,
         descripcion: _descripcionController.text.isEmpty
             ? null
             : _descripcionController.text,
-        categoria: _categoriaSeleccionada == 'Seleccionar'
+        categoriaId: _categoriaSeleccionada == 'Seleccionar'
             ? null
             : _categoriaSeleccionada,
         precio: double.tryParse(_precioController.text) ?? 0,
-        grosor: _grosorController.text.isEmpty ? null : _grosorController.text,
         cantidad: int.tryParse(_cantidadController.text) ?? 1,
-        imagenFile: _imagenSeleccionada,
+        codigo: _codigoController.text.isEmpty ? null : _codigoController.text,
+        grosor: _grosorController.text.isEmpty ? null : _grosorController.text,
       );
+      if (_editing && _productId != null) {
+        final resp = await _almacenService.actualizarProductoConImagen(
+          _productId!,
+          request,
+          imageBytes: _imagenSeleccionada?.bytes,
+          filename: _imagenSeleccionada?.name,
+        );
 
-      _limpiarFormulario();
-      widget.onProductoAgregado();
-      _snack("Producto agregado correctamente");
+        if (resp.success) {
+          widget.onProductoAgregado();
+          _snack("Producto actualizado correctamente");
+          // si venimos por navegación, volver con true
+          if (Navigator.canPop(context)) Navigator.of(context).pop(true);
+        } else {
+          _snack("Error al actualizar producto: ${resp.message}");
+        }
+      } else {
+        final resp = await _almacenService.crearProducto(
+          request,
+          imageBytes: _imagenSeleccionada?.bytes,
+          filename: _imagenSeleccionada?.name,
+        );
+
+        if (resp.success) {
+          _limpiarFormulario();
+          widget.onProductoAgregado();
+          _snack("Producto agregado correctamente");
+        } else {
+          _snack("Error al agregar producto: ${resp.message}");
+        }
+      }
     } catch (e) {
       _snack("Error al agregar producto");
     } finally {
@@ -350,17 +436,20 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
             child: DropdownButton<String>(
               value: _categoriaSeleccionada,
               isExpanded: true,
-              items: const [
-                DropdownMenuItem(
+              items: [
+                const DropdownMenuItem(
                   value: 'Seleccionar',
                   child: Text('Seleccionar'),
                 ),
-                DropdownMenuItem(value: 'Vidrio', child: Text('Vidrio')),
-                DropdownMenuItem(value: 'Aluminio', child: Text('Aluminio')),
-                DropdownMenuItem(
-                  value: 'Accesorios',
-                  child: Text('Accesorios'),
-                ),
+                if (_cargandoCategorias)
+                  const DropdownMenuItem(value: '', child: Text('Cargando...'))
+                else
+                  ..._categorias.map((c) {
+                    return DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.descripcion),
+                    );
+                  }).toList(),
               ],
               onChanged: (v) => setState(() => _categoriaSeleccionada = v),
             ),

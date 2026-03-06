@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/models/vidriobras_model.dart';
-import 'package:flutter_application_1/services/digi_service.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_application_1/models/almacen_model.dart';
+import 'package:flutter_application_1/services/almacen_service.dart';
 import 'package:flutter_application_1/screens/agregar_producto_page.dart';
+import 'package:flutter_application_1/screens/producto_detalle_page.dart';
+import 'package:flutter_application_1/screens/reportes_screen.dart';
+import 'package:flutter_application_1/services/categoria_service.dart';
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -12,8 +16,10 @@ class ProductosPage extends StatefulWidget {
 
 class _ProductosPageState extends State<ProductosPage> {
   static const Color rojo = Color(0xFF9D2612);
-  final DigiService _digiService = DigiService();
-  late Future<List<Producto>> _futureProductos;
+  final AlmacenService _almacenService = AlmacenService();
+  final CategoriaService _categoriaService = CategoriaService();
+  late Future<ProductoListResponse> _futureProductos;
+  Map<String, String> _categoriaMap = {};
   int _currentIndex = 0;
 
   @override
@@ -24,7 +30,14 @@ class _ProductosPageState extends State<ProductosPage> {
 
   void _cargarProductos() {
     setState(() {
-      _futureProductos = _digiService.getProductos();
+      _futureProductos = _almacenService.obtenerProductos();
+    });
+  }
+
+  Future<void> _cargarCategorias() async {
+    final cats = await _categoriaService.obtenerCategorias();
+    setState(() {
+      _categoriaMap = {for (var c in cats) c.id: c.descripcion};
     });
   }
 
@@ -70,16 +83,13 @@ class _ProductosPageState extends State<ProductosPage> {
                 setState(() {
                   _currentIndex = 2;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Abrir reportes (pendiente)')),
-                );
               },
             ),
             _BottomAction(
               icon: Icons.logout,
               label: 'Salir',
               onTap: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                context.go('/');
               },
             ),
           ],
@@ -99,7 +109,7 @@ Widget _buildBody() {
 
       switch (state._currentIndex) {
         case 0: // Inventario
-          return FutureBuilder<List<Producto>>(
+          return FutureBuilder<ProductoListResponse>(
             future: state._futureProductos,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -128,7 +138,13 @@ Widget _buildBody() {
                 );
               }
 
-              final productos = snapshot.data ?? [];
+              final response = snapshot.data;
+              final productos = response?.productos ?? [];
+
+              // ensure categories loaded
+              if (state._categoriaMap.isEmpty) {
+                state._cargarCategorias();
+              }
 
               if (productos.isEmpty) {
                 return const Center(
@@ -178,10 +194,10 @@ Widget _buildBody() {
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
-                          if (producto.categoria != null) ...[
+                          if (producto.categoriaId != null) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Categoría: ${producto.categoria}',
+                              'Categoría: ${state._categoriaMap[producto.categoriaId] ?? producto.categoriaId}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey,
@@ -199,6 +215,22 @@ Widget _buildBody() {
                           fontSize: 14,
                         ),
                       ),
+                      onTap: () async {
+                        final refreshed = await Navigator.of(context)
+                            .push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => ProductoDetallePage(
+                                  producto: producto,
+                                  categoriaNombre:
+                                      state._categoriaMap[producto.categoriaId],
+                                ),
+                              ),
+                            );
+
+                        if (refreshed == true) {
+                          state._cargarProductos();
+                        }
+                      },
                     ),
                   );
                 },
@@ -210,7 +242,7 @@ Widget _buildBody() {
           return AgregarProductoUI(onProductoAgregado: state._cargarProductos);
 
         case 2: // Reportes
-          return const Center(child: Text('Reportes (pendiente)'));
+          return const ReportesScreen();
 
         default:
           return const SizedBox.shrink();
