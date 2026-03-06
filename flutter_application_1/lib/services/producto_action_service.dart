@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/almacen_model.dart';
 import '../models/producto_action_model.dart';
-
+///nombre
 /// Servicio centralizado para acciones de producto (editar, eliminar)
 class ProductoActionService {
   static const String _baseUrl = 'http://localhost:5000';
