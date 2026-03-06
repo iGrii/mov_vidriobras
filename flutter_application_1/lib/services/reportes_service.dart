@@ -18,9 +18,9 @@ class ReportesService {
       if (tipo != null) url += '&tipo=$tipo';
       if (productoId != null) url += '&producto_id=$productoId';
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
 
       final json = jsonDecode(response.body);
 
@@ -43,24 +43,28 @@ class ReportesService {
   }
 
   /// Obtener solo creaciones
-  Future<ReportesResponse> obtenerCreaciones({int limit = 100, int offset = 0}) =>
-      obtenerReportes(tipo: 'CREAR', limit: limit, offset: offset);
+  Future<ReportesResponse> obtenerCreaciones({
+    int limit = 100,
+    int offset = 0,
+  }) => obtenerReportes(tipo: 'CREAR', limit: limit, offset: offset);
 
   /// Obtener solo ediciones
-  Future<ReportesResponse> obtenerEdiciones({int limit = 100, int offset = 0}) =>
-      obtenerReportes(tipo: 'EDITAR', limit: limit, offset: offset);
+  Future<ReportesResponse> obtenerEdiciones({
+    int limit = 100,
+    int offset = 0,
+  }) => obtenerReportes(tipo: 'EDITAR', limit: limit, offset: offset);
 
   /// Obtener solo eliminaciones
-  Future<ReportesResponse> obtenerEliminaciones({int limit = 100, int offset = 0}) =>
-      obtenerReportes(tipo: 'ELIMINAR', limit: limit, offset: offset);
+  Future<ReportesResponse> obtenerEliminaciones({
+    int limit = 100,
+    int offset = 0,
+  }) => obtenerReportes(tipo: 'ELIMINAR', limit: limit, offset: offset);
 
   /// Obtener resumen de reportes
   Future<ResumenReportes> obtenerResumen({int dias = 30}) async {
     try {
       final response = await http
-          .get(
-            Uri.parse('$_baseUrl/reportes/resumen?dias=$dias'),
-          )
+          .get(Uri.parse('$_baseUrl/reportes/resumen?dias=$dias'))
           .timeout(const Duration(seconds: 10));
 
       final json = jsonDecode(response.body);
@@ -80,6 +84,5 @@ class ReportesService {
     String productoId, {
     int limit = 100,
     int offset = 0,
-  }) =>
-      obtenerReportes(productoId: productoId, limit: limit, offset: offset);
+  }) => obtenerReportes(productoId: productoId, limit: limit, offset: offset);
 }
