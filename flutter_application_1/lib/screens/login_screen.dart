@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController empresaController = TextEditingController();
   final LoginService _loginService = LoginService();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +81,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       _inputBlanco(
                         controller: empresaController,
-                        hint: "CÓDIGO DE EMPRESA",
+                        hint: "CONTRASEÑA",
+                        isPassword: true,
+                        obscurePassword: _obscurePassword,
+                        onTogglePassword: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
                       ),
 
                       const SizedBox(height: 40),
@@ -202,10 +208,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _inputBlanco({
     required String hint,
     required TextEditingController controller,
+    bool isPassword = false,
+    bool obscurePassword = false,
+    VoidCallback? onTogglePassword,
   }) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
+      obscureText: isPassword ? obscurePassword : false,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(
@@ -216,6 +226,15 @@ class _LoginScreenState extends State<LoginScreen> {
           horizontal: 25,
           vertical: 18,
         ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.lock : Icons.lock_open,
+                  color: Colors.white,
+                ),
+                onPressed: onTogglePassword,
+              )
+            : null,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: const BorderSide(color: Colors.white, width: 1.5),

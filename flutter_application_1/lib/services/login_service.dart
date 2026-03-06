@@ -128,7 +128,6 @@ class LoginService {
             body: jsonEncode(loginRequest.toJson()),
           )
           .timeout(const Duration(seconds: 10));
-
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {

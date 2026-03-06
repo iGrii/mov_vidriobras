@@ -36,16 +36,10 @@ class EliminarProductoRequest {
   final String productoId;
   final String? razon;
 
-  EliminarProductoRequest({
-    required this.productoId,
-    this.razon,
-  });
+  EliminarProductoRequest({required this.productoId, this.razon});
 
   Map<String, dynamic> toJson() {
-    return {
-      'producto_id': productoId,
-      'razon': razon,
-    };
+    return {'producto_id': productoId, 'razon': razon};
   }
 }
 

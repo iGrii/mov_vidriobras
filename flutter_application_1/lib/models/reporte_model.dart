@@ -22,12 +22,13 @@ class ReporteProducto {
     return ReporteProducto(
       id: json['id']?.toString() ?? '',
       productoId: json['producto_id']?.toString() ?? '',
-      productoNombre: json['nombre_producto']?.toString() ?? 
-                      json['producto_nombre']?.toString() ?? 
-                      json['nombre']?.toString() ?? 
-                      json['name']?.toString() ?? 
-                      json['product_name']?.toString() ?? 
-                      'Sin nombre',
+      productoNombre:
+          json['nombre_producto']?.toString() ??
+          json['producto_nombre']?.toString() ??
+          json['nombre']?.toString() ??
+          json['name']?.toString() ??
+          json['product_name']?.toString() ??
+          'Sin nombre',
       tipo: json['tipo']?.toString() ?? '',
       detalles: json['detalles']?.toString() ?? json['details']?.toString(),
       fechaCambio: json['fecha_cambio'] != null
@@ -69,16 +70,16 @@ class ResumenReportes {
       crear: (json['CREAR'] ?? 0) as int,
       editar: (json['EDITAR'] ?? 0) as int,
       eliminar: (json['ELIMINAR'] ?? 0) as int,
-      total: ((json['CREAR'] ?? 0) + (json['EDITAR'] ?? 0) + (json['ELIMINAR'] ?? 0)) as int,
+      total:
+          ((json['CREAR'] ?? 0) +
+                  (json['EDITAR'] ?? 0) +
+                  (json['ELIMINAR'] ?? 0))
+              as int,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'CREAR': crear,
-      'EDITAR': editar,
-      'ELIMINAR': eliminar,
-    };
+    return {'CREAR': crear, 'EDITAR': editar, 'ELIMINAR': eliminar};
   }
 }
 

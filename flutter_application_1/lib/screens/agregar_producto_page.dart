@@ -77,8 +77,7 @@ class _AgregarProductoUIState extends State<AgregarProductoUI> {
         // Si estamos en modo edición, ahora establecer la categoría correcta
         if (_editing && widget.producto != null) {
           final categoriaId = widget.producto!.categoriaId;
-          if (categoriaId != null &&
-              cats.any((c) => c.id == categoriaId)) {
+          if (categoriaId != null && cats.any((c) => c.id == categoriaId)) {
             _categoriaSeleccionada = categoriaId;
           } else {
             _categoriaSeleccionada = 'Seleccionar';

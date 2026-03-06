@@ -23,8 +23,10 @@ class _ProductoDetallePageState extends State<ProductoDetallePage> {
 
   Future<void> _confirmEliminar() async {
     setState(() => _deleting = true);
-    final deleted =
-        await _actionService.confirmarYEliminarProducto(context, widget.producto);
+    final deleted = await _actionService.confirmarYEliminarProducto(
+      context,
+      widget.producto,
+    );
     setState(() => _deleting = false);
     if (deleted && mounted) {
       Navigator.of(context).pop(true);

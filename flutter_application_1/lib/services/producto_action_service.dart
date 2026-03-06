@@ -35,7 +35,7 @@ class ProductoActionService {
 
     final request = EliminarProductoRequest(productoId: producto.id ?? '');
     final resp = await eliminarProducto(request);
-    
+
     if (!context.mounted) return false;
 
     if (resp.success) {
@@ -44,9 +44,9 @@ class ProductoActionService {
       );
       return true;
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${resp.mensaje}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${resp.mensaje}')));
       return false;
     }
   }
@@ -58,7 +58,9 @@ class ProductoActionService {
     try {
       final response = await http
           .delete(
-            Uri.parse('$_baseUrl/api/flutter/productos/eliminar/${request.productoId}'),
+            Uri.parse(
+              '$_baseUrl/api/flutter/productos/eliminar/${request.productoId}',
+            ),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -96,7 +98,9 @@ class ProductoActionService {
     try {
       final response = await http
           .put(
-            Uri.parse('$_baseUrl/api/flutter/productos/actualizar/${request.productoId}'),
+            Uri.parse(
+              '$_baseUrl/api/flutter/productos/actualizar/${request.productoId}',
+            ),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(request.toJson()),
           )

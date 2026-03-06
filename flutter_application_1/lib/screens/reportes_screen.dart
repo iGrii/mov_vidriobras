@@ -45,10 +45,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
       appBar: AppBar(
         title: const Text('Reportes de Productos'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _cargarDatos,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _cargarDatos),
         ],
       ),
       body: RefreshIndicator(
@@ -93,8 +90,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
                       isExpanded: true,
                       items: const [
                         DropdownMenuItem(value: '', child: Text('Todos')),
-                        DropdownMenuItem(value: 'CREAR', child: Text('Creados')),
-                        DropdownMenuItem(value: 'EDITAR', child: Text('Editados')),
+                        DropdownMenuItem(
+                          value: 'CREAR',
+                          child: Text('Creados'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'EDITAR',
+                          child: Text('Editados'),
+                        ),
                         DropdownMenuItem(
                           value: 'ELIMINAR',
                           child: Text('Eliminados'),
@@ -136,7 +139,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red,
+                          ),
                           const SizedBox(height: 12),
                           const Text('Error al cargar reportes'),
                           const SizedBox(height: 12),
@@ -191,7 +198,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
                     itemCount: lista.length,
                     itemBuilder: (ctx, i) {
                       final r = lista[i];
-                      final tieneNombre = r.productoNombre.isNotEmpty && r.productoNombre != 'Sin nombre';
+                      final tieneNombre =
+                          r.productoNombre.isNotEmpty &&
+                          r.productoNombre != 'Sin nombre';
                       return GestureDetector(
                         onTap: () => _mostrarDetalle(ctx, r),
                         child: Card(
@@ -215,8 +224,12 @@ class _ReportesScreenState extends State<ReportesScreen> {
                               ),
                             ),
                             title: Text(
-                              tieneNombre ? r.productoNombre : 'Producto sin nombre',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              tieneNombre
+                                  ? r.productoNombre
+                                  : 'Producto sin nombre',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -240,7 +253,8 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                if (r.detalles != null && r.detalles!.isNotEmpty) ...[
+                                if (r.detalles != null &&
+                                    r.detalles!.isNotEmpty) ...[
                                   const SizedBox(height: 2),
                                   Text(
                                     'ID: ${r.productoId.length > 12 ? r.productoId.substring(0, 12) + '...' : r.productoId}',
@@ -252,7 +266,10 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                 ],
                               ],
                             ),
-                            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       );
@@ -369,7 +386,12 @@ class _ReportesScreenState extends State<ReportesScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _detalleField('Producto', reporte.productoNombre.isEmpty ? 'Sin nombre' : reporte.productoNombre),
+              _detalleField(
+                'Producto',
+                reporte.productoNombre.isEmpty
+                    ? 'Sin nombre'
+                    : reporte.productoNombre,
+              ),
               const SizedBox(height: 12),
               _detalleField('ID Producto', reporte.productoId),
               const SizedBox(height: 12),
@@ -416,10 +438,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
           color: Colors.grey[100],
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          value,
-          style: const TextStyle(fontSize: 13),
-        ),
+        child: Text(value, style: const TextStyle(fontSize: 13)),
       ),
     ],
   );
