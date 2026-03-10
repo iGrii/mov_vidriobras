@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/services/pusher_config.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_application_1/models/almacen_model.dart';
 import 'package:flutter_application_1/services/almacen_service.dart';
@@ -15,6 +18,7 @@ class ProductosPage extends StatefulWidget {
 }
 
 class _ProductosPageState extends State<ProductosPage> {
+  final PusherConfig _pusherConfig = PusherConfig(); // ✅ nombre corregido
   static const Color rojo = Color(0xFF9D2612);
   final AlmacenService _almacenService = AlmacenService();
   final CategoriaService _categoriaService = CategoriaService();
@@ -22,10 +26,65 @@ class _ProductosPageState extends State<ProductosPage> {
   Map<String, String> _categoriaMap = {};
   int _currentIndex = 0;
 
+  // ✅ Variable para almacenar el último mensaje recibido por Pusher
+  String _mensajePusher = "";
+
   @override
   void initState() {
     super.initState();
     _cargarProductos();
+    _escucharPusher();
+  }
+
+  @override
+  void dispose() {
+    _pusherConfig.disconnect();
+    super.dispose();
+  }
+
+  void _escucharPusher() {
+    _pusherConfig.initPusher(
+      channelName: "mi-canal",
+      eventName: "mi-evento",
+      onEventTriggered: (event) {
+        if (!mounted) return;
+
+        dynamic data;
+        if (event.data is String) {
+          data = jsonDecode(event.data.toString());
+        } else {
+          data = event.data;
+        }
+
+        String mensajeRecibido = data['mensaje'] ?? "Sin mensaje";
+
+        setState(() {
+          _mensajePusher = mensajeRecibido;
+        });
+
+        _mostrarAlerta(mensajeRecibido);
+      },
+    );
+  }
+
+  void _mostrarAlerta(String contenido) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("¡Nuevo Evento Recibido!"),
+          content: Text("Datos recibidos: $contenido"),
+          actions: [
+            TextButton(
+              child: const Text("Cerrar"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _cargarProductos() {
@@ -44,12 +103,15 @@ class _ProductosPageState extends State<ProductosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Productos'), elevation: 0),
+      appBar: AppBar(
+        title: Text(_mensajePusher.isNotEmpty ? _mensajePusher : 'Productos'),
+        elevation: 0,
+      ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color.fromRGBO(255, 255, 255, 1),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        decoration: const BoxDecoration(
+          color: Color.fromRGBO(255, 255, 255, 1),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -59,9 +121,7 @@ class _ProductosPageState extends State<ProductosPage> {
               label: 'Inventario',
               active: _currentIndex == 0,
               onTap: () {
-                setState(() {
-                  _currentIndex = 0;
-                });
+                setState(() => _currentIndex = 0);
                 _cargarProductos();
               },
             ),
@@ -69,28 +129,18 @@ class _ProductosPageState extends State<ProductosPage> {
               icon: Icons.add,
               label: 'Agregar',
               active: _currentIndex == 1,
-              onTap: () {
-                setState(() {
-                  _currentIndex = 1;
-                });
-              },
+              onTap: () => setState(() => _currentIndex = 1),
             ),
             _BottomAction(
               icon: Icons.bar_chart,
               label: 'Reportes',
               active: _currentIndex == 2,
-              onTap: () {
-                setState(() {
-                  _currentIndex = 2;
-                });
-              },
+              onTap: () => setState(() => _currentIndex = 2),
             ),
             _BottomAction(
               icon: Icons.logout,
               label: 'Salir',
-              onTap: () {
-                context.go('/');
-              },
+              onTap: () => context.go('/'),
             ),
           ],
         ),
@@ -101,14 +151,13 @@ class _ProductosPageState extends State<ProductosPage> {
 }
 
 Widget _buildBody() {
-  // This helper will be converted to an instance method by using a Builder in the widget tree.
   return Builder(
     builder: (context) {
       final state = context.findAncestorStateOfType<_ProductosPageState>();
       if (state == null) return const SizedBox.shrink();
 
       switch (state._currentIndex) {
-        case 0: // Inventario
+        case 0:
           return FutureBuilder<ProductoListResponse>(
             future: state._futureProductos,
             builder: (context, snapshot) {
@@ -138,10 +187,8 @@ Widget _buildBody() {
                 );
               }
 
-              final response = snapshot.data;
-              final productos = response?.productos ?? [];
+              final productos = snapshot.data?.productos ?? [];
 
-              // ensure categories loaded
               if (state._categoriaMap.isEmpty) {
                 state._cargarCategorias();
               }
@@ -172,9 +219,8 @@ Widget _buildBody() {
                                 width: 56,
                                 height: 56,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(Icons.inventory_2);
-                                },
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.inventory_2),
                               ),
                             )
                           : const Icon(Icons.inventory_2),
@@ -226,10 +272,7 @@ Widget _buildBody() {
                                 ),
                               ),
                             );
-
-                        if (refreshed == true) {
-                          state._cargarProductos();
-                        }
+                        if (refreshed == true) state._cargarProductos();
                       },
                     ),
                   );
@@ -238,10 +281,10 @@ Widget _buildBody() {
             },
           );
 
-        case 1: // Agregar
+        case 1:
           return AgregarProductoUI(onProductoAgregado: state._cargarProductos);
 
-        case 2: // Reportes
+        case 2:
           return const ReportesScreen();
 
         default:
