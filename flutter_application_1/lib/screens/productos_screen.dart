@@ -10,6 +10,202 @@ import 'package:flutter_application_1/screens/producto_detalle_page.dart';
 import 'package:flutter_application_1/screens/reportes_screen.dart';
 import 'package:flutter_application_1/services/categoria_service.dart';
 
+// ─────────────────────────────────────────────────────────────
+// Modelo interno para parsear el evento Pusher de forma clara
+// ─────────────────────────────────────────────────────────────
+class _PusherEvento {
+  final String tipo;   // 'producto_creado' | 'producto_actualizado' | 'producto_eliminado'
+  final String mensaje;
+  final String? nombre;
+  final String? codigo;
+
+  const _PusherEvento({
+    required this.tipo,
+    required this.mensaje,
+    this.nombre,
+    this.codigo,
+  });
+
+  factory _PusherEvento.fromRaw(dynamic raw) {
+    Map<String, dynamic> data = {};
+
+    if (raw is String) {
+      try {
+        data = jsonDecode(raw) as Map<String, dynamic>;
+      } catch (_) {
+        data = {'mensaje': raw};
+      }
+    } else if (raw is Map) {
+      data = Map<String, dynamic>.from(raw);
+    }
+
+    return _PusherEvento(
+      tipo: data['tipo']?.toString() ?? '',
+      mensaje: data['mensaje']?.toString() ?? 'Nueva notificación',
+      nombre: data['nombre']?.toString(),
+      codigo: data['codigo']?.toString(),
+    );
+  }
+
+  // ── Metadatos visuales según el tipo ──────────────────────
+
+  Color get color {
+    switch (tipo) {
+      case 'producto_creado':
+        return const Color(0xFF1B8A4C); // verde
+      case 'producto_actualizado':
+        return const Color(0xFF1565C0); // azul
+      case 'producto_eliminado':
+        return const Color(0xFFC62828); // rojo
+      default:
+        return const Color(0xFF424242); // gris oscuro
+    }
+  }
+
+  IconData get icono {
+    switch (tipo) {
+      case 'producto_creado':
+        return Icons.add_circle_outline;
+      case 'producto_actualizado':
+        return Icons.edit_outlined;
+      case 'producto_eliminado':
+        return Icons.delete_outline;
+      default:
+        return Icons.notifications_outlined;
+    }
+  }
+
+  String get etiqueta {
+    switch (tipo) {
+      case 'producto_creado':
+        return '¡SE AGREGO UN NUEVO PRODUCTO!';
+      case 'producto_actualizado':
+        return 'PRODUCTO EDITADO';
+      case 'producto_eliminado':
+        return 'PRODUCTO ELIMINADO';
+      default:
+        return 'NOTIFICACIÓN';
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+class _NotificacionBanner extends StatelessWidget {
+  final _PusherEvento evento;
+  final VoidCallback onCerrar;
+
+  const _NotificacionBanner({
+    required this.evento,
+    required this.onCerrar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Cabecera coloreada
+          Container(
+            width: double.infinity,
+            color: evento.color,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            child: Row(
+              children: [
+                Icon(evento.icono, color: Colors.white, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    evento.etiqueta,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Cuerpo
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (evento.nombre != null) ...[
+                  _InfoRow(label: 'Producto', value: evento.nombre!),
+                  const SizedBox(height: 8),
+                ],
+                if (evento.codigo != null) ...[
+                  _InfoRow(label: 'Código', value: evento.codigo!),
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  evento.mensaje,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          // Botón cerrar
+          Padding(
+            padding: const EdgeInsets.only(right: 16, bottom: 12),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                style: TextButton.styleFrom(foregroundColor: evento.color),
+                onPressed: onCerrar,
+                child: const Text(
+                  'CERRAR',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Página principal
+// ─────────────────────────────────────────────────────────────
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
 
@@ -18,16 +214,17 @@ class ProductosPage extends StatefulWidget {
 }
 
 class _ProductosPageState extends State<ProductosPage> {
-  final PusherConfig _pusherConfig = PusherConfig(); // ✅ nombre corregido
+  final PusherConfig _pusherConfig = PusherConfig();
   static const Color rojo = Color(0xFF9D2612);
+
   final AlmacenService _almacenService = AlmacenService();
   final CategoriaService _categoriaService = CategoriaService();
   late Future<ProductoListResponse> _futureProductos;
   Map<String, String> _categoriaMap = {};
   int _currentIndex = 0;
 
-  // ✅ Variable para almacenar el último mensaje recibido por Pusher
-  String _mensajePusher = "";
+  // Último evento Pusher recibido (para el título del AppBar)
+  _PusherEvento? _ultimoEvento;
 
   @override
   void initState() {
@@ -42,50 +239,35 @@ class _ProductosPageState extends State<ProductosPage> {
     super.dispose();
   }
 
+  // ── Pusher ───────────────────────────────────────────────
+
   void _escucharPusher() {
     _pusherConfig.initPusher(
-      channelName: "mi-canal",
-      eventName: "mi-evento",
+      channelName: "my-channel",
+      eventName: "my-event",
       onEventTriggered: (event) {
         if (!mounted) return;
 
-        dynamic data;
-        if (event.data is String) {
-          data = jsonDecode(event.data.toString());
-        } else {
-          data = event.data;
-        }
+        final evento = _PusherEvento.fromRaw(event.data);
 
-        String mensajeRecibido = data['mensaje'] ?? "Sin mensaje";
-
-        setState(() {
-          _mensajePusher = mensajeRecibido;
-        });
-
-        _mostrarAlerta(mensajeRecibido);
+        setState(() => _ultimoEvento = evento);
+        _cargarProductos();
+        _mostrarNotificacion(evento);
       },
     );
   }
 
-  void _mostrarAlerta(String contenido) {
+  void _mostrarNotificacion(_PusherEvento evento) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("¡Nuevo Evento Recibido!"),
-          content: Text("Datos recibidos: $contenido"),
-          actions: [
-            TextButton(
-              child: const Text("Cerrar"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+      builder: (_) => _NotificacionBanner(
+        evento: evento,
+        onCerrar: () => Navigator.of(context).pop(),
+      ),
     );
   }
+
+  // ── Datos ────────────────────────────────────────────────
 
   void _cargarProductos() {
     setState(() {
@@ -100,11 +282,37 @@ class _ProductosPageState extends State<ProductosPage> {
     });
   }
 
+  // ── UI ───────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    // Título del AppBar cambia según el último evento recibido
+    String titulo = 'Productos';
+    Color appBarColor = rojo;
+
+    if (_ultimoEvento != null) {
+      titulo = _ultimoEvento!.etiqueta;
+      appBarColor = _ultimoEvento!.color;
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_mensajePusher.isNotEmpty ? _mensajePusher : 'Productos'),
+        title: Row(
+          children: [
+            if (_ultimoEvento != null) ...[
+              Icon(_ultimoEvento!.icono, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                titulo,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: appBarColor,
         elevation: 0,
       ),
       bottomNavigationBar: Container(
@@ -150,6 +358,9 @@ class _ProductosPageState extends State<ProductosPage> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Body según pestaña activa
+// ─────────────────────────────────────────────────────────────
 Widget _buildBody() {
   return Builder(
     builder: (context) {
@@ -170,11 +381,8 @@ Widget _buildBody() {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red,
-                      ),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
                       const SizedBox(height: 16),
                       Text('Error: ${snapshot.error}'),
                       const SizedBox(height: 16),
@@ -189,14 +397,11 @@ Widget _buildBody() {
 
               final productos = snapshot.data?.productos ?? [];
 
-              if (state._categoriaMap.isEmpty) {
-                state._cargarCategorias();
-              }
+              if (state._categoriaMap.isEmpty) state._cargarCategorias();
 
               if (productos.isEmpty) {
                 return const Center(
-                  child: Text('No hay productos disponibles'),
-                );
+                    child: Text('No hay productos disponibles'));
               }
 
               return ListView.builder(
@@ -205,12 +410,9 @@ Widget _buildBody() {
                   final producto = productos[index];
                   return Card(
                     margin: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                        horizontal: 8, vertical: 4),
                     child: ListTile(
-                      leading:
-                          (producto.imagen != null &&
+                      leading: (producto.imagen != null &&
                               producto.imagen!.startsWith('http'))
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(4),
@@ -226,7 +428,8 @@ Widget _buildBody() {
                           : const Icon(Icons.inventory_2),
                       title: Text(
                         producto.nombre,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,9 +448,7 @@ Widget _buildBody() {
                             Text(
                               'Categoría: ${state._categoriaMap[producto.categoriaId] ?? producto.categoriaId}',
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
+                                  fontSize: 11, color: Colors.grey),
                             ),
                           ],
                         ],
@@ -257,21 +458,19 @@ Widget _buildBody() {
                             ? 'S/ ${producto.precio!.toStringAsFixed(2)}'
                             : 'N/A',
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                            fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       onTap: () async {
                         final refreshed = await Navigator.of(context)
                             .push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => ProductoDetallePage(
-                                  producto: producto,
-                                  categoriaNombre:
-                                      state._categoriaMap[producto.categoriaId],
-                                ),
-                              ),
-                            );
+                          MaterialPageRoute(
+                            builder: (_) => ProductoDetallePage(
+                              producto: producto,
+                              categoriaNombre: state
+                                  ._categoriaMap[producto.categoriaId],
+                            ),
+                          ),
+                        );
                         if (refreshed == true) state._cargarProductos();
                       },
                     ),
@@ -282,7 +481,8 @@ Widget _buildBody() {
           );
 
         case 1:
-          return AgregarProductoUI(onProductoAgregado: state._cargarProductos);
+          return AgregarProductoUI(
+              onProductoAgregado: state._cargarProductos);
 
         case 2:
           return const ReportesScreen();
@@ -294,6 +494,9 @@ Widget _buildBody() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Botón de la barra inferior
+// ─────────────────────────────────────────────────────────────
 class _BottomAction extends StatelessWidget {
   final IconData icon;
   final String label;
