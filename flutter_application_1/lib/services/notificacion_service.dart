@@ -7,7 +7,8 @@ import 'package:flutter_application_1/models/notificacion_model.dart';
 
 class NotificacionService {
   // ── Ajusta esta URL a la de tu backend ──────────────────────
-  static const String _baseUrl = 'http://localhost:5000/api/notificaciones';
+  static const String _baseUrl =
+      'https://api.vidriobras.com/api/notificaciones';
 
   // ─────────────────────────────────────────────────────────────
   // GET  /api/notificaciones
@@ -21,11 +22,11 @@ class NotificacionService {
   }) async {
     try {
       final params = <String, String>{
-        'limit':  limit.toString(),
+        'limit': limit.toString(),
         'offset': offset.toString(),
-        if (estadoId != null)  'estado_id':  estadoId,
+        if (estadoId != null) 'estado_id': estadoId,
         if (idCliente != null) 'id_cliente': idCliente,
-        if (tipo != null)      'tipo':        tipo,
+        if (tipo != null) 'tipo': tipo,
       };
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: params);
@@ -39,7 +40,9 @@ class NotificacionService {
             .toList();
       }
 
-      print('[NotificacionService] Error ${response.statusCode}: ${response.body}');
+      print(
+        '[NotificacionService] Error ${response.statusCode}: ${response.body}',
+      );
       return [];
     } catch (e) {
       print('[NotificacionService] Error en obtenerNotificaciones: $e');
@@ -78,11 +81,12 @@ class NotificacionService {
   }) async {
     try {
       final body = <String, dynamic>{
-        'nombre':      nombre,
-        if (descripcion != null)          'descripcion':             descripcion,
-        if (tipo != null)                 'tipo':                    tipo,
-        if (estadoNotificacionId != null) 'estado_notificacion_id':  estadoNotificacionId,
-        if (idCliente != null)            'id_cliente':              idCliente,
+        'nombre': nombre,
+        if (descripcion != null) 'descripcion': descripcion,
+        if (tipo != null) 'tipo': tipo,
+        if (estadoNotificacionId != null)
+          'estado_notificacion_id': estadoNotificacionId,
+        if (idCliente != null) 'id_cliente': idCliente,
       };
 
       final response = await http
@@ -96,7 +100,8 @@ class NotificacionService {
       if (response.statusCode == 201) {
         final respBody = jsonDecode(response.body) as Map<String, dynamic>;
         return NotificacionModel.fromJson(
-            respBody['data'] as Map<String, dynamic>);
+          respBody['data'] as Map<String, dynamic>,
+        );
       }
 
       print('[NotificacionService] Error al crear: ${response.body}');

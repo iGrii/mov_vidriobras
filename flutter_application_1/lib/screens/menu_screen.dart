@@ -89,6 +89,14 @@ class MenuScreen extends StatelessWidget {
                     },
                     child: _itemRojo("INSTALACIÓN"),
                   ),
+                  _linea(),
+
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                    child: _item("SALIR"),
+                  ),
                 ],
               ),
             ),

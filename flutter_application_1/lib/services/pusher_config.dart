@@ -22,8 +22,8 @@ class PusherConfig {
         },
         onEvent: (PusherEvent event) {
           log("Evento recibido en canal general: ${event.eventName}");
-          // Solo ejecutamos el callback si es el evento que nos interesa
-          if (event.eventName == eventName) {
+          // Permite escuchar todos los eventos con '*' o un evento puntual.
+          if (eventName == '*' || event.eventName == eventName) {
             onEventTriggered(event);
           }
         },

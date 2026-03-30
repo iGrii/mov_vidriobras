@@ -4,7 +4,8 @@ import '../models/reporte_model.dart';
 
 /// Servicio para obtener reportes de cambios de productos
 class ReportesService {
-  static const String _baseUrl = 'http://localhost:5000/api/flutter/productos';
+  static const String _baseUrl =
+      'https://Api.vidriobras.com/api/flutter/productos';
 
   /// Obtener reportes con filtros opcionales
   Future<ReportesResponse> obtenerReportes({

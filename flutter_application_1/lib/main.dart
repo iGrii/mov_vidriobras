@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'config/app_router.dart'; // Asegúrate de importar tu router
+import 'services/onesignal_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await OneSignalService().initialize();
   runApp(const MyApp());
 }
 

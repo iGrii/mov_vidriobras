@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/reportes_service.dart';
-import 'package:flutter_application_1/models/reporte_model.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
+import '../models/reporte_model.dart';
+import '../services/reportes_service.dart';
 
 class ReportesScreen extends StatefulWidget {
   const ReportesScreen({super.key});
@@ -10,12 +14,14 @@ class ReportesScreen extends StatefulWidget {
 }
 
 class _ReportesScreenState extends State<ReportesScreen> {
-  final ReportesService _reportesService = ReportesService();
-  late Future<ResumenReportes> _statsResumen;
-  late Future<ReportesResponse> _reportes;
-  String _filtroTipo = ''; // '' = todos, 'CREAR', 'EDITAR', 'ELIMINAR'
-  int _diasResumen = 30;
-  bool _cargando = false;
+  final ReportesService _service = ReportesService();
+
+  bool _cargando = true;
+  bool _exportandoPdf = false;
+  String? _error;
+
+  List<ReporteProducto> _reportes = [];
+  ResumenReportes? _resumen;
 
   @override
   void initState() {
@@ -23,259 +29,286 @@ class _ReportesScreenState extends State<ReportesScreen> {
     _cargarDatos();
   }
 
-  void _cargarDatos() {
+  Future<void> _cargarDatos() async {
+    if (!mounted) return;
     setState(() {
       _cargando = true;
-      _statsResumen = _reportesService.obtenerResumen(dias: _diasResumen);
-      _reportes = _filtroTipo.isEmpty
-          ? _reportesService.obtenerReportes()
-          : _reportesService.obtenerReportes(tipo: _filtroTipo);
+      _error = null;
     });
-    // Esperar un momento para hacer ambas llamadas
-    Future.delayed(const Duration(milliseconds: 500), () {
+
+    try {
+      final reportesResp = await _service.obtenerReportes(limit: 200);
+      final resumenResp = await _service.obtenerResumen();
+
+      if (!mounted) return;
+      setState(() {
+        _reportes = reportesResp.reportes;
+        _resumen = resumenResp;
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'No se pudieron cargar los reportes';
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _generarPdf() async {
+    if (_exportandoPdf) return;
+
+    setState(() => _exportandoPdf = true);
+    try {
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          build: (context) {
+            return [
+              pw.Text(
+                'Reporte de productos',
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Text('Total de movimientos: ${_resumen?.total ?? 0}'),
+              pw.Text('Crear: ${_resumen?.crear ?? 0}'),
+              pw.Text('Editar: ${_resumen?.editar ?? 0}'),
+              pw.Text('Eliminar: ${_resumen?.eliminar ?? 0}'),
+              pw.SizedBox(height: 14),
+              pw.Text(
+                'Detalle',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              ..._reportes.map(
+                (r) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 10),
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          '${r.tipoEtiqueta} - ${r.productoNombre}',
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        ),
+                        if (r.productoCodigo != null &&
+                            r.productoCodigo!.isNotEmpty)
+                          pw.Text('Codigo: ${r.productoCodigo}'),
+                        pw.Text('Fecha: ${r.fechaFormateada}'),
+                        if (r.usuario != null && r.usuario!.isNotEmpty)
+                          pw.Text('Usuario: ${r.usuario}'),
+                        if (r.detalles != null && r.detalles!.isNotEmpty)
+                          pw.Text('Detalle: ${r.detalles}'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ];
+          },
+        ),
+      );
+
+      final bytes = await doc.save();
+      await Printing.layoutPdf(onLayout: (format) async => bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo generar el PDF')),
+      );
+    } finally {
       if (mounted) {
-        setState(() => _cargando = false);
+        setState(() => _exportandoPdf = false);
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
-        title: const Text('Reportes de Productos'),
+        backgroundColor: const Color(0xFF9D2612),
+        title: const Text('Reportes', style: TextStyle(color: Colors.white)),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _cargarDatos),
+          IconButton(
+            onPressed: _exportandoPdf ? null : _generarPdf,
+            icon: _exportandoPdf
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.picture_as_pdf, color: Colors.white),
+            tooltip: 'Generar PDF',
+          ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => _cargarDatos(),
-        child: Column(
-          children: [
-            // Estadísticas
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: FutureBuilder<ResumenReportes>(
-                future: _statsResumen,
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 80,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  if (!snap.hasData) {
-                    return const SizedBox(height: 80);
-                  }
-                  final data = snap.data!;
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _tarjeta('Creados', data.crear, Colors.green),
-                      _tarjeta('Editados', data.editar, Colors.blue),
-                      _tarjeta('Eliminados', data.eliminar, Colors.red),
-                    ],
-                  );
-                },
-              ),
-            ),
-            // Filtros
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
+        onRefresh: _cargarDatos,
+        child: _cargando
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? ListView(
                 children: [
-                  Expanded(
-                    child: DropdownButton<String>(
-                      value: _filtroTipo,
-                      isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: '', child: Text('Todos')),
-                        DropdownMenuItem(
-                          value: 'CREAR',
-                          child: Text('Creados'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'EDITAR',
-                          child: Text('Editados'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'ELIMINAR',
-                          child: Text('Eliminados'),
-                        ),
-                      ],
-                      onChanged: (v) {
-                        setState(() => _filtroTipo = v ?? '');
-                        _cargarDatos();
-                      },
+                  const SizedBox(height: 140),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                  const SizedBox(height: 12),
+                  Center(child: Text(_error!)),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _cargarDatos,
+                      child: const Text('Reintentar'),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  DropdownButton<int>(
-                    value: _diasResumen,
-                    items: const [
-                      DropdownMenuItem(value: 7, child: Text('7d')),
-                      DropdownMenuItem(value: 30, child: Text('30d')),
-                      DropdownMenuItem(value: 90, child: Text('90d')),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _diasResumen = v ?? 30);
-                      _cargarDatos();
-                    },
+                ],
+              )
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _ResumenCard(resumen: _resumen),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Movimientos',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+                  const SizedBox(height: 8),
+                  if (_reportes.isEmpty)
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.inbox_outlined),
+                        title: Text('No hay movimientos para mostrar'),
+                      ),
+                    ),
+                  ..._reportes.map((r) => _ReporteCard(reporte: r)),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _ReporteCard extends StatelessWidget {
+  final ReporteProducto reporte;
+
+  const _ReporteCard({required this.reporte});
+
+  Color _colorTipo(String tipo) {
+    switch (tipo) {
+      case 'CREAR':
+        return const Color(0xFF1B8A4C);
+      case 'EDITAR':
+        return const Color(0xFF1565C0);
+      case 'ELIMINAR':
+        return const Color(0xFFC62828);
+      default:
+        return const Color(0xFF5F6368);
+    }
+  }
+
+  IconData _iconoTipo(String tipo) {
+    switch (tipo) {
+      case 'CREAR':
+        return Icons.add_circle_outline;
+      case 'EDITAR':
+        return Icons.edit_outlined;
+      case 'ELIMINAR':
+        return Icons.delete_outline;
+      default:
+        return Icons.receipt_long;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = reporte.tipoNormalizado;
+    final color = _colorTipo(tipo);
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(_iconoTipo(tipo), color: color),
             ),
-            const SizedBox(height: 8),
-            // Lista de reportes
+            const SizedBox(width: 12),
             Expanded(
-              child: FutureBuilder<ReportesResponse>(
-                future: _reportes,
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snap.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text('Error al cargar reportes'),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _cargarDatos,
-                            child: const Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  if (!snap.hasData || snap.data!.reportes.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Sin reportes aún',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Los cambios en productos aparecerán aquí',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _cargarDatos,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Recargar'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  final lista = snap.data!.reportes;
-                  return ListView.builder(
-                    itemCount: lista.length,
-                    itemBuilder: (ctx, i) {
-                      final r = lista[i];
-                      final tieneNombre =
-                          r.productoNombre.isNotEmpty &&
-                          r.productoNombre != 'Sin nombre';
-                      return GestureDetector(
-                        onTap: () => _mostrarDetalle(ctx, r),
-                        child: Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          elevation: 2,
-                          child: ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _getColorTipo(r.tipo),
-                              ),
-                              child: Icon(
-                                _getIconTipo(r.tipo),
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            title: Text(
-                              tieneNombre
-                                  ? r.productoNombre
-                                  : 'Producto sin nombre',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  _getTituloTipo(r.tipo),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: _getColorTipo(r.tipo),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _formatearFecha(r.fechaCambio),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                if (r.detalles != null &&
-                                    r.detalles!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'ID: ${r.productoId.length > 12 ? r.productoId.substring(0, 12) + '...' : r.productoId}',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: Colors.grey,
-                            ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          reporte.productoNombre,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          reporte.tipoEtiqueta,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (reporte.productoCodigo != null &&
+                      reporte.productoCodigo!.isNotEmpty)
+                    Text('Codigo: ${reporte.productoCodigo}'),
+                  Text('Fecha: ${reporte.fechaFormateada}'),
+                  if (reporte.usuario != null && reporte.usuario!.isNotEmpty)
+                    Text('Usuario: ${reporte.usuario}'),
+                  if (reporte.detalles != null && reporte.detalles!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        reporte.detalles!,
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -283,163 +316,35 @@ class _ReportesScreenState extends State<ReportesScreen> {
       ),
     );
   }
+}
 
-  Widget _tarjeta(String titulo, int num, Color color) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.withOpacity(0.3)),
-    ),
-    child: Column(
-      children: [
-        Text(
-          titulo,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          num.toString(),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
+class _ResumenCard extends StatelessWidget {
+  final ResumenReportes? resumen;
+
+  const _ResumenCard({required this.resumen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Resumen',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
-        ),
-      ],
-    ),
-  );
-
-  Color _getColorTipo(String tipo) {
-    switch (tipo) {
-      case 'CREAR':
-        return Colors.green;
-      case 'EDITAR':
-        return Colors.blue;
-      case 'ELIMINAR':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getIconTipo(String tipo) {
-    switch (tipo) {
-      case 'CREAR':
-        return Icons.add;
-      case 'EDITAR':
-        return Icons.edit;
-      case 'ELIMINAR':
-        return Icons.delete;
-      default:
-        return Icons.info;
-    }
-  }
-
-  String _getTituloTipo(String tipo) {
-    switch (tipo) {
-      case 'CREAR':
-        return 'Creado';
-      case 'EDITAR':
-        return 'Editado';
-      case 'ELIMINAR':
-        return 'Eliminado';
-      default:
-        return tipo;
-    }
-  }
-
-  String _formatearFecha(DateTime fecha) {
-    return '${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}';
-  }
-
-  void _mostrarDetalle(BuildContext context, ReporteProducto reporte) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _getColorTipo(reporte.tipo),
-              ),
-              child: Icon(
-                _getIconTipo(reporte.tipo),
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _getTituloTipo(reporte.tipo),
-                style: TextStyle(color: _getColorTipo(reporte.tipo)),
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _detalleField(
-                'Producto',
-                reporte.productoNombre.isEmpty
-                    ? 'Sin nombre'
-                    : reporte.productoNombre,
-              ),
-              const SizedBox(height: 12),
-              _detalleField('ID Producto', reporte.productoId),
-              const SizedBox(height: 12),
-              _detalleField('Tipo', reporte.tipo),
-              const SizedBox(height: 12),
-              _detalleField('Fecha', _formatearFecha(reporte.fechaCambio)),
-              if (reporte.detalles != null && reporte.detalles!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _detalleField('Detalles', reporte.detalles!),
-              ],
-              if (reporte.usuario != null && reporte.usuario!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _detalleField('Usuario', reporte.usuario!),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cerrar'),
-          ),
+          const SizedBox(height: 8),
+          Text('Total: ${resumen?.total ?? 0}'),
+          Text('Crear: ${resumen?.crear ?? 0}'),
+          Text('Editar: ${resumen?.editar ?? 0}'),
+          Text('Eliminar: ${resumen?.eliminar ?? 0}'),
         ],
       ),
     );
   }
-
-  Widget _detalleField(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
-      ),
-      const SizedBox(height: 4),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(value, style: const TextStyle(fontSize: 13)),
-      ),
-    ],
-  );
 }

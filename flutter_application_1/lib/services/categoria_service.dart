@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/categoria_model.dart';
 
 class CategoriaService {
-  static const String _baseUrl = 'http://localhost:5000';
+  static const String _baseUrl = 'https://api.vidriobras.com';
 
   /// Obtiene la lista de categorías desde el backend.
   ///

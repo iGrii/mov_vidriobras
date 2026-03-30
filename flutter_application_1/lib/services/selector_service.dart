@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/selector_model.dart';
 
 class SelectorService {
-  static const String _baseUrl = 'http://localhost:5000';
+  static const String _baseUrl = 'https://api.vidriobras.com';
 
   /// Obtener lista de áreas disponibles
   Future<AreasResponse> getAreas() async {

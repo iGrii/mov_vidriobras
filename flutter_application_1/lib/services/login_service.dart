@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/selector_model.dart';
 
 class LoginService {
-  static const String _baseUrl = 'http://localhost:5000';
+  static const String _baseUrl = 'https://api.vidriobras.com';
 
   static const String operacionesId = '3f31e127-c7f1-49cf-8c95-efb846882165';
   static const String almacenId = '8426fd1a-2633-49d1-bc83-f6400bb58708';
